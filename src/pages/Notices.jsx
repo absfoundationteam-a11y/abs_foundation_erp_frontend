@@ -5,7 +5,8 @@ import { LoadingState, Alert, EmptyState } from "../components/UI"
 import { getNoticesAPI, addNoticeAPI, deleteNoticeAPI, getCoursesAPI, markNoticeReadAPI } from "../api"
 
 export default function Notices() {
-  const { isAdmin } = useAuth()
+  const { isAdmin, isStaff } = useAuth()
+  const canManage = isAdmin || isStaff
 
   const [notices, setNotices] = useState([])
   const [loading, setLoading] = useState(true)
@@ -27,7 +28,7 @@ export default function Notices() {
 
   useEffect(() => {
     fetchNotices()
-    if (isAdmin) {
+    if (canManage) {
       getCoursesAPI().then(r => setCourses(r.data.courses || [])).catch(() => {})
     }
   }, [])
@@ -53,7 +54,7 @@ export default function Notices() {
       const res = await getNoticesAPI()
       const list = res.data.notices
       setNotices(list)
-      if (!isAdmin && list.length > 0) {
+      if (!canManage && list.length > 0) {
         list.forEach(n => markNoticeReadAPI(n.id).catch(() => {}))
       }
     } catch (err) {
@@ -110,8 +111,8 @@ export default function Notices() {
 
         <h2 className="text-2xl font-bold text-slate-800 mb-6">📢 Notices</h2>
 
-        {/* Admin: Add Notice */}
-        {isAdmin && (
+        {/* Admin/Staff: Add Notice */}
+        {canManage && (
           <div className="card p-6 mb-6">
             <h3 className="section-title mb-4">Post a Notice</h3>
             <form onSubmit={handleAdd} className="space-y-3">
@@ -175,13 +176,13 @@ export default function Notices() {
                         ? <span className="badge-blue">🎓 {n.course}</span>
                         : <span className="badge-green">🌐 Everyone</span>
                       }
-                      {isAdmin && n.read_count > 0 && (
+                      {canManage && n.read_count > 0 && (
                         <span className="badge-gray">👁 {n.read_count} read</span>
                       )}
                     </div>
                     <p className="text-slate-600 text-sm leading-relaxed">{n.content}</p>
                   </div>
-                  {isAdmin && (
+                  {canManage && (
                     <div className="ml-4 flex-shrink-0">
                       {deleteConfirmId === n.id ? (
                         <div className="flex gap-2 items-center">

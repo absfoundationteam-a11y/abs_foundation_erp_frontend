@@ -72,6 +72,17 @@ function StaffRoute({ children }) {
   return children
 }
 
+// Admin or Staff — full access except admin-only pages (dashboard, admin-accounts)
+function AdminOrStaffRoute({ children }) {
+  const { user, loading } = useAuth()
+  if (loading) return <LoadingScreen />
+  if (!user) return <Navigate to="/login" replace />
+  if (user.role === "student") return <Navigate to="/student/dashboard" replace />
+  if (user.role === "teacher") return <Navigate to="/teacher" replace />
+  if (user.role !== "admin" && user.role !== "staff") return <Navigate to="/login" replace />
+  return children
+}
+
 // ✅ Teacher only route
 function TeacherRoute({ children }) {
   const { user, loading } = useAuth()
@@ -133,27 +144,28 @@ export default function App() {
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
         <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
 
-        {/* Admin routes */}
-        <Route path="/dashboard" element={<AdminRoute><Dashboard /></AdminRoute>} />
-        <Route path="/students" element={<AdminRoute><Students /></AdminRoute>} />
-        <Route path="/attendance" element={<AdminRoute><Attendance /></AdminRoute>} />
-        <Route path="/fees" element={<AdminRoute><Fees /></AdminRoute>} />
-        <Route path="/teachers" element={<AdminRoute><Teachers /></AdminRoute>} />
-        <Route path="/grades" element={<AdminRoute><Grades /></AdminRoute>} />
-        <Route path="/timetable" element={<AdminRoute><Timetable /></AdminRoute>} />
-        <Route path="/notices" element={<AdminRoute><Notices /></AdminRoute>} />
-        <Route path="/import" element={<AdminRoute><ImportStudents /></AdminRoute>} />
-        <Route path="/courses"       element={<AdminRoute><Courses /></AdminRoute>} />
-        <Route path="/staff/courses" element={<StaffRoute><Courses /></StaffRoute>} />
+        {/* Admin-only routes */}
+        <Route path="/dashboard"      element={<AdminRoute><Dashboard /></AdminRoute>} />
         <Route path="/admin-accounts" element={<AdminRoute><AdminAccounts /></AdminRoute>} />
-        <Route path="/exam-schedule"  element={<AdminRoute><ExamSchedule /></AdminRoute>} />
-        <Route path="/audit-log"           element={<AdminRoute><AuditLog /></AdminRoute>} />
-        <Route path="/data-export"         element={<AdminRoute><DataExport /></AdminRoute>} />
-        <Route path="/attendance-report"   element={<AdminRoute><AttendanceReport /></AdminRoute>} />
-        <Route path="/grievances"           element={<AdminRoute><GrievanceManagement /></AdminRoute>} />
-        <Route path="/inquiries"            element={<AdminRoute><Inquiry /></AdminRoute>} />
-        <Route path="/tasks"                element={<AdminRoute><Tasks /></AdminRoute>} />
-        <Route path="/expenses"             element={<AdminRoute><Expenses /></AdminRoute>} />
+
+        {/* Admin + Staff routes */}
+        <Route path="/students"          element={<AdminOrStaffRoute><Students /></AdminOrStaffRoute>} />
+        <Route path="/attendance"        element={<AdminOrStaffRoute><Attendance /></AdminOrStaffRoute>} />
+        <Route path="/fees"              element={<AdminOrStaffRoute><Fees /></AdminOrStaffRoute>} />
+        <Route path="/teachers"          element={<AdminOrStaffRoute><Teachers /></AdminOrStaffRoute>} />
+        <Route path="/grades"            element={<AdminOrStaffRoute><Grades /></AdminOrStaffRoute>} />
+        <Route path="/timetable"         element={<AdminOrStaffRoute><Timetable /></AdminOrStaffRoute>} />
+        <Route path="/notices"           element={<AdminOrStaffRoute><Notices /></AdminOrStaffRoute>} />
+        <Route path="/import"            element={<AdminOrStaffRoute><ImportStudents /></AdminOrStaffRoute>} />
+        <Route path="/courses"           element={<AdminOrStaffRoute><Courses /></AdminOrStaffRoute>} />
+        <Route path="/exam-schedule"     element={<AdminOrStaffRoute><ExamSchedule /></AdminOrStaffRoute>} />
+        <Route path="/audit-log"         element={<AdminOrStaffRoute><AuditLog /></AdminOrStaffRoute>} />
+        <Route path="/data-export"       element={<AdminOrStaffRoute><DataExport /></AdminOrStaffRoute>} />
+        <Route path="/attendance-report" element={<AdminOrStaffRoute><AttendanceReport /></AdminOrStaffRoute>} />
+        <Route path="/grievances"        element={<AdminOrStaffRoute><GrievanceManagement /></AdminOrStaffRoute>} />
+        <Route path="/inquiries"         element={<AdminOrStaffRoute><Inquiry /></AdminOrStaffRoute>} />
+        <Route path="/tasks"             element={<AdminOrStaffRoute><Tasks /></AdminOrStaffRoute>} />
+        <Route path="/expenses"          element={<AdminOrStaffRoute><Expenses /></AdminOrStaffRoute>} />
 
         {/* Teacher routes */}
         <Route path="/teacher" element={<TeacherRoute><TeacherDashboard /></TeacherRoute>} />

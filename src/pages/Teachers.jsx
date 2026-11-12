@@ -141,7 +141,8 @@ function AssignSubjectsModal({ teacher, allSubjects, onClose, onSaved }) {
 
 // ─── Main Teachers Page ──────────────────────────────────────────
 export default function Teachers() {
-  const { isAdmin } = useAuth()
+  const { isAdmin, isStaff } = useAuth()
+  const canManage = isAdmin || isStaff
 
   const [teachers, setTeachers] = useState([])
   const [allSubjects, setAllSubjects] = useState([])
@@ -165,7 +166,7 @@ export default function Teachers() {
 
   useEffect(() => {
     fetchTeachers()
-    if (isAdmin) fetchAllSubjects()
+    if (canManage) fetchAllSubjects()
   }, [])
 
   useEffect(() => {
@@ -316,8 +317,8 @@ export default function Teachers() {
 
         <h2 className="text-2xl font-bold text-slate-800 mb-6">👨‍🏫 Teachers</h2>
 
-        {/* Admin: Add / Edit Form */}
-        {isAdmin && (
+        {/* Admin/Staff: Add / Edit Form */}
+        {canManage && (
           <div ref={formRef} className="card p-6 mb-6">
             <h3 className="section-title mb-4">{editId ? "Edit Teacher" : "Add Teacher"}</h3>
             <form onSubmit={handleSubmit} className="flex flex-wrap gap-3">
@@ -368,7 +369,7 @@ export default function Teachers() {
                     <th>Email</th>
                     <th>Subjects Assigned</th>
                     <th>Phone</th>
-                    {isAdmin && <th>Actions</th>}
+                    {canManage && <th>Actions</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -392,7 +393,7 @@ export default function Teachers() {
                         )}
                       </td>
                       <td>{t.phone || "—"}</td>
-                      {isAdmin && (
+                      {canManage && (
                         <td>
                           {deleteConfirmId === t.id ? (
                             <div className="flex gap-2 items-center">

@@ -33,7 +33,8 @@ function AttBar({ pct }) {
 }
 
 export default function Attendance() {
-  const { user, isAdmin } = useAuth()
+  const { user, isAdmin, isStaff } = useAuth()
+  const isManagerView = isAdmin || isStaff
 
   const [attendance, setAttendance]       = useState([])
   const [summary, setSummary]             = useState(null)
@@ -84,7 +85,7 @@ export default function Attendance() {
   const [bulkError, setBulkError]         = useState("")
 
   useEffect(() => { fetchAttendance() }, [])
-  useEffect(() => { if (isAdmin) loadCourses() }, [isAdmin])
+  useEffect(() => { if (isManagerView) loadCourses() }, [isManagerView])
   useEffect(() => {
     if (success) { const t = setTimeout(() => setSuccess(""), 3000); return () => clearTimeout(t) }
   }, [success])
@@ -117,7 +118,7 @@ export default function Attendance() {
   async function fetchAttendance(params = {}) {
     setLoading(true); setError("")
     try {
-      if (isAdmin) {
+      if (isManagerView) {
         const res = await getAttendanceAPI()
         setAttendance(res.data.attendance)
       } else {
@@ -312,7 +313,7 @@ export default function Attendance() {
         <h2 className="text-2xl font-bold text-slate-800 mb-6">📋 Attendance</h2>
 
         {/* Admin: Mark Attendance */}
-        {isAdmin && (
+        {isManagerView && (
           <div className="card p-6 mb-6">
             <h3 className="section-title mb-4">Mark Attendance</h3>
             <form onSubmit={handleMark} className="flex flex-wrap gap-3">
@@ -336,7 +337,7 @@ export default function Attendance() {
         )}
 
         {/* Admin: Tab Switcher */}
-        {isAdmin && (
+        {isManagerView && (
           <div className="flex gap-2 mb-5 flex-wrap">
             {tabBtn("search", "🔍 Search by Student")}
             {tabBtn("course", "🎓 Browse by Course")}
@@ -345,7 +346,7 @@ export default function Attendance() {
         )}
 
         {/* Admin Tab: Search by Student */}
-        {isAdmin && adminTab === "search" && (
+        {isManagerView && adminTab === "search" && (
           <div className="card p-6 mb-6">
             <h3 className="section-title mb-4">Search by Student</h3>
             <form onSubmit={handleSearch} className="flex flex-wrap gap-3 items-end">
@@ -393,7 +394,7 @@ export default function Attendance() {
               </div>
             )}
 
-            {summary && isAdmin && (
+            {summary && isManagerView && (
               <div className="mt-4 flex gap-6 text-center">
                 <div><p className="text-2xl font-bold text-emerald-600">{summary.attendance_percentage}%</p><p className="text-xs text-slate-500">Attendance</p></div>
                 <div><p className="text-2xl font-bold text-primary-600">{summary.present}</p><p className="text-xs text-slate-500">Present</p></div>
@@ -404,7 +405,7 @@ export default function Attendance() {
         )}
 
         {/* Admin Tab: Browse by Course */}
-        {isAdmin && adminTab === "course" && (
+        {isManagerView && adminTab === "course" && (
           <div className="card p-6 mb-6">
             <div className="flex flex-wrap gap-3 items-end mb-5">
               <div className="flex-1 min-w-[220px]">
@@ -570,7 +571,7 @@ export default function Attendance() {
         )}
 
         {/* Admin Tab: Bulk Mark */}
-        {isAdmin && adminTab === "bulk" && (
+        {isManagerView && adminTab === "bulk" && (
           <div className="card p-6 mb-6">
             <h3 className="section-title mb-4">Bulk Mark Attendance</h3>
 
@@ -693,7 +694,7 @@ export default function Attendance() {
         )}
 
         {/* Student: Date Range Filter */}
-        {!isAdmin && (
+        {!isManagerView && (
           <div className="card p-5 mb-6">
             <h3 className="section-title mb-3">📅 Filter by Date Range</h3>
             <form onSubmit={handleApplyDateRange} className="flex flex-wrap gap-3 items-end">
@@ -722,7 +723,7 @@ export default function Attendance() {
         )}
 
         {/* Filters bar */}
-        {(!isAdmin || adminTab === "search") && (
+        {(!isManagerView || adminTab === "search") && (
           <div className="card p-4 mb-6">
             <div className="flex flex-wrap gap-3 items-center">
               <span className="text-sm font-medium text-slate-600">Filter:</span>
@@ -741,7 +742,7 @@ export default function Attendance() {
         )}
 
         {/* Student: Attendance Summary */}
-        {!isAdmin && summary && !rangeApplied && (
+        {!isManagerView && summary && !rangeApplied && (
           <div className="card p-6 mb-6">
             <h3 className="section-title mb-4">My Attendance Summary</h3>
             <div className="flex gap-8 text-center mb-4">
@@ -761,7 +762,7 @@ export default function Attendance() {
         )}
 
         {/* Student: Subject-wise Attendance */}
-        {!isAdmin && subjectSummary.length > 0 && (
+        {!isManagerView && subjectSummary.length > 0 && (
           <div className="card p-6 mb-6">
             <h3 className="section-title mb-4">Subject-wise Attendance</h3>
             <div className="space-y-3">
@@ -781,7 +782,7 @@ export default function Attendance() {
         )}
 
         {/* Attendance Records Table */}
-        {(!isAdmin || adminTab === "search") && (
+        {(!isManagerView || adminTab === "search") && (
           <div className="card overflow-hidden">
             {loading ? (
               <div className="p-6"><LoadingState message="Loading attendance…" /></div>
@@ -792,7 +793,7 @@ export default function Attendance() {
                 {/* Header row with count */}
                 <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between text-xs text-slate-500">
                   <span className="font-medium">
-                    {isAdmin && selectedStudent
+                    {isManagerView && selectedStudent
                       ? `${selectedStudent.name}'s Records`
                       : "Attendance Records"}
                   </span>
@@ -803,9 +804,9 @@ export default function Attendance() {
                   <table className="tbl">
                     <thead>
                       <tr>
-                        {isAdmin && <th>Student ID</th>}
+                        {isManagerView && <th>Student ID</th>}
                         <th>Date</th>
-                        {!isAdmin && <th>Subject</th>}
+                        {!isManagerView && <th>Subject</th>}
                         <th>Status</th>
                       </tr>
                     </thead>
@@ -814,9 +815,9 @@ export default function Attendance() {
                         .slice((attPage - 1) * ATT_PAGE_SIZE, attPage * ATT_PAGE_SIZE)
                         .map((a) => (
                           <tr key={a.id}>
-                            {isAdmin && <td className="font-mono text-xs text-slate-400">{a.student_id}</td>}
+                            {isManagerView && <td className="font-mono text-xs text-slate-400">{a.student_id}</td>}
                             <td className="font-medium">{a.date}</td>
-                            {!isAdmin && <td>{a.subject_name || a.subject_id || "—"}</td>}
+                            {!isManagerView && <td>{a.subject_name || a.subject_id || "—"}</td>}
                             <td>
                               <span className={`badge ${a.status === "present" ? "badge-green" : "badge-red"}`}>
                                 {a.status === "present" ? "✅ Present" : "❌ Absent"}

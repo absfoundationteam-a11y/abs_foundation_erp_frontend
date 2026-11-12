@@ -328,7 +328,8 @@ function EditModal({ exam, courses, onClose, onSave, saving }) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function ExamSchedule() {
-  const { user, isAdmin, isTeacher, isStudent } = useAuth()
+  const { user, isAdmin, isStaff, isTeacher, isStudent } = useAuth()
+  const canManage = isAdmin || isStaff
 
   const [courses, setCourses]                     = useState([])
   const [selectedCourseId, setSelectedCourseId]   = useState("")
@@ -373,10 +374,10 @@ export default function ExamSchedule() {
 
   // ── Fetch exams when selectedCourseId changes (admin/teacher) ─────────────
   useEffect(() => {
-    if (isAdmin || isTeacher) {
+    if (canManage || isTeacher) {
       fetchExams(selectedCourseId || null)
     }
-  }, [selectedCourseId, isAdmin, isTeacher])
+  }, [selectedCourseId, canManage, isTeacher])
 
   async function loadCourses() {
     try {
@@ -832,7 +833,7 @@ export default function ExamSchedule() {
               title="Upcoming Exams"
               exams={upcomingExams}
               courses={courses}
-              isAdmin={isAdmin}
+              isAdmin={canManage}
               onEdit={(exam) => { setEditModal(exam); setError("") }}
               onDelete={handleDelete}
               deleteConfirmId={deleteConfirmId}
@@ -843,7 +844,7 @@ export default function ExamSchedule() {
               title="Past Exams"
               exams={pastExams}
               courses={courses}
-              isAdmin={isAdmin}
+              isAdmin={canManage}
               onEdit={(exam) => { setEditModal(exam); setError("") }}
               onDelete={handleDelete}
               deleteConfirmId={deleteConfirmId}

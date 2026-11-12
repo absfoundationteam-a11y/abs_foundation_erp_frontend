@@ -1366,12 +1366,12 @@ function today() {
 
 // ── Main ─────────────────────────────────────────────────────
 export default function Fees() {
-  const { user, isAdmin } = useAuth()
+  const { user, isAdmin, isStaff } = useAuth()
   return (
     <div className="flex min-h-screen">
       <Sidebar />
       <main className="page-main">
-        {isAdmin ? <AdminFees /> : <StudentFees studentId={user?.student_id} studentName={user?.name} studentCode={user?.student_code} course={user?.course} parentPhone={user?.parent_phone} />}
+        {(isAdmin || isStaff) ? <AdminFees /> : <StudentFees studentId={user?.student_id} studentName={user?.name} studentCode={user?.student_code} course={user?.course} parentPhone={user?.parent_phone} />}
       </main>
     </div>
   )
