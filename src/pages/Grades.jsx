@@ -586,7 +586,10 @@ function ViewPerformance() {
                           onClick={() => setDetailStudent(prev => prev?.id === g.student.id ? null : g.student)}
                           className="text-left group"
                         >
-                          <p className="font-semibold text-gray-800 group-hover:text-blue-600 transition leading-tight">{g.student.name}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold text-gray-800 group-hover:text-blue-600 transition leading-tight">{g.student.name}</p>
+                            {g.is_absent && <span className="px-1.5 py-0.5 rounded text-xs font-bold bg-orange-100 text-orange-600 whitespace-nowrap">ABSENT</span>}
+                          </div>
                           <p className="text-xs text-gray-400">{g.student.student_code || `#${g.student.id}`}</p>
                         </button>
                       </td>
