@@ -108,6 +108,7 @@ function AddGrades() {
       const res = await getStudentsByCourseAPI(selectedCourse.name)
       const list = res.data.students
       if (list.length === 0) { setError(`No students found in "${selectedCourse.name}"`); return }
+      list.sort((a, b) => a.name.localeCompare(b.name))
       setStudents(list)
       const def = {}, st = {}
       list.forEach((s) => { def[s.id] = ""; st[s.id] = null })
@@ -135,7 +136,12 @@ function AddGrades() {
     let saved = 0, failed = 0, cntAbsent = 0, cntSkipped = 0
     for (const s of students) {
       const st = studentStatus[s.id]
-      if (st === "absent")  { cntAbsent++;  setSaveProgress(Math.round(((saved + cntAbsent + cntSkipped) / students.length) * 100)); continue }
+      if (st === "absent") {
+        cntAbsent++
+        try { await addGradeAPI({ student_id: s.id, subject: selectedSubject.name, marks: 0, total_marks: parseFloat(totalMarks), is_absent: true, test_title: testTitle.trim(), test_date: testDate.split("-").reverse().join("-") }) } catch {}
+        setSaveProgress(Math.round(((saved + cntAbsent + cntSkipped) / students.length) * 100))
+        continue
+      }
       if (st === "skip")    { cntSkipped++; setSaveProgress(Math.round(((saved + cntAbsent + cntSkipped) / students.length) * 100)); continue }
       try {
         await addGradeAPI({ student_id: s.id, subject: selectedSubject.name, marks: parseFloat(marks[s.id]), total_marks: parseFloat(totalMarks), test_title: testTitle.trim(), test_date: testDate.split("-").reverse().join("-") })
@@ -442,7 +448,8 @@ function ViewPerformance() {
   const stats = useMemo(() => {
     if (!allGrades.length) return null
     const studentIds = new Set(allGrades.map(g => g.student.id))
-    const avgPct = (allGrades.reduce((s, g) => s + (g.marks / g.total_marks) * 100, 0) / allGrades.length).toFixed(1)
+    const scored = allGrades.filter(g => !g.is_absent)
+    const avgPct = scored.length ? (scored.reduce((s, g) => s + (g.marks / g.total_marks) * 100, 0) / scored.length).toFixed(1) : "—"
     return { students: studentIds.size, tests: allGrades.length, avgPct, subjects: uniqueSubjects.length }
   }, [allGrades, uniqueSubjects])
 
@@ -454,8 +461,10 @@ function ViewPerformance() {
 
   const detailStats = useMemo(() => {
     if (!detailGrades.length) return null
-    const totalM = detailGrades.reduce((s, g) => s + g.marks, 0)
-    const totalMax = detailGrades.reduce((s, g) => s + g.total_marks, 0)
+    const scored = detailGrades.filter(g => !g.is_absent)
+    if (!scored.length) return null
+    const totalM = scored.reduce((s, g) => s + g.marks, 0)
+    const totalMax = scored.reduce((s, g) => s + g.total_marks, 0)
     const avgPct = totalMax > 0 ? ((totalM / totalMax) * 100).toFixed(1) : 0
     return { avgPct, overall: overallGrade(parseFloat(avgPct)) }
   }, [detailGrades])
@@ -568,9 +577,9 @@ function ViewPerformance() {
                 {filtered.length === 0 ? (
                   <tr><td colSpan="8" className="px-4 py-10 text-center text-gray-400">No matching entries</td></tr>
                 ) : filtered.map(g => {
-                  const pct = ((g.marks / g.total_marks) * 100).toFixed(1)
+                  const pct = g.is_absent ? null : ((g.marks / g.total_marks) * 100).toFixed(1)
                   return (
-                    <tr key={g.id} className="border-t hover:bg-gray-50 transition">
+                    <tr key={g.id} className={`border-t hover:bg-gray-50 transition${g.is_absent ? " bg-orange-50" : ""}`}>
                       <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">{fmtDate(g.test_date)}</td>
                       <td className="px-4 py-3">
                         <button
@@ -583,12 +592,16 @@ function ViewPerformance() {
                       </td>
                       <td className="px-4 py-3 text-gray-600 text-sm">{g.subject}</td>
                       <td className="px-4 py-3 font-medium text-gray-700">{g.test_title || <span className="text-gray-400 italic text-xs">Unnamed</span>}</td>
-                      <td className="px-4 py-3 text-center font-mono text-gray-700">{g.marks}/{g.total_marks}</td>
-                      <td className="px-4 py-3 text-center">
-                        <span className={`font-semibold text-sm ${pctColor(parseFloat(pct))}`}>{pct}%</span>
+                      <td className="px-4 py-3 text-center font-mono text-gray-700">
+                        {g.is_absent ? <span className="text-orange-500 font-semibold text-xs">ABSENT</span> : `${g.marks}/${g.total_marks}`}
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${gradeColor(g.grade)}`}>{g.grade}</span>
+                        {g.is_absent ? <span className="text-orange-400 text-xs">—</span> : <span className={`font-semibold text-sm ${pctColor(parseFloat(pct))}`}>{pct}%</span>}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {g.is_absent
+                          ? <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-orange-100 text-orange-600">ABS</span>
+                          : <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${gradeColor(g.grade)}`}>{g.grade}</span>}
                       </td>
                       <td className="px-2 py-3 text-center">
                         {deleteConfirmId === g.id ? (
@@ -655,8 +668,9 @@ function ViewPerformance() {
           {/* Subject-wise breakdown */}
           <div className="p-4 space-y-3">
             {Object.entries(groupBySubject(detailGrades)).map(([subject, tests]) => {
-              const sTotal = tests.reduce((s, g) => s + g.marks, 0)
-              const sMax   = tests.reduce((s, g) => s + g.total_marks, 0)
+              const scored = tests.filter(g => !g.is_absent)
+              const sTotal = scored.reduce((s, g) => s + g.marks, 0)
+              const sMax   = scored.reduce((s, g) => s + g.total_marks, 0)
               const sPct   = sMax > 0 ? ((sTotal / sMax) * 100).toFixed(1) : 0
               const sGrade = overallGrade(parseFloat(sPct))
               return (
@@ -676,19 +690,23 @@ function ViewPerformance() {
                   <table className="w-full text-sm">
                     <tbody>
                       {tests.map(g => {
-                        const pct = ((g.marks / g.total_marks) * 100).toFixed(1)
+                        const pct = g.is_absent ? null : ((g.marks / g.total_marks) * 100).toFixed(1)
                         return (
-                          <tr key={g.id} className="border-t hover:bg-gray-50 transition">
+                          <tr key={g.id} className={`border-t hover:bg-gray-50 transition${g.is_absent ? " bg-orange-50" : ""}`}>
                             <td className="px-4 py-2.5 text-xs text-gray-400 w-20 whitespace-nowrap">{fmtDate(g.test_date)}</td>
                             <td className="px-4 py-2.5 font-medium text-gray-700">
                               {g.test_title || <span className="italic text-gray-400 text-xs">Unnamed</span>}
                             </td>
-                            <td className="px-4 py-2.5 text-center font-mono text-gray-600">{g.marks}/{g.total_marks}</td>
-                            <td className="px-4 py-2.5 text-center">
-                              <span className={`font-semibold text-xs ${pctColor(parseFloat(pct))}`}>{pct}%</span>
+                            <td className="px-4 py-2.5 text-center font-mono text-gray-600">
+                              {g.is_absent ? <span className="text-orange-500 font-semibold text-xs">ABSENT</span> : `${g.marks}/${g.total_marks}`}
                             </td>
                             <td className="px-4 py-2.5 text-center">
-                              <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${gradeColor(g.grade)}`}>{g.grade}</span>
+                              {g.is_absent ? <span className="text-orange-400 text-xs">—</span> : <span className={`font-semibold text-xs ${pctColor(parseFloat(pct))}`}>{pct}%</span>}
+                            </td>
+                            <td className="px-4 py-2.5 text-center">
+                              {g.is_absent
+                                ? <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-orange-100 text-orange-600">ABS</span>
+                                : <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${gradeColor(g.grade)}`}>{g.grade}</span>}
                             </td>
                           </tr>
                         )

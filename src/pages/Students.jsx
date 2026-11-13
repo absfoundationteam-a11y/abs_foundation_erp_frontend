@@ -28,6 +28,7 @@ const EMPTY_FORM = {
   local_address: "",
   course: "",
   fees: "",
+  fees_paid: "",
   school_college_name: "",
   medium: "",
   admission_date: "",
@@ -179,6 +180,7 @@ export default function Students() {
       local_address: form.local_address?.trim() || null,
       course: form.course?.trim() || null,
       fees: form.fees !== "" && form.fees !== null ? parseFloat(form.fees) : null,
+      fees_paid: form.fees_paid !== "" && form.fees_paid !== null ? parseFloat(form.fees_paid) : null,
       school_college_name: form.school_college_name?.trim() || null,
       medium: form.medium || null,
       admission_date: form.admission_date || null,
@@ -495,6 +497,7 @@ export default function Students() {
                 )}
               </div>
               <Field label="Fees (₹)" name="fees" value={form.fees} onChange={handleChange} type="number" min="0" placeholder="Total fees amount" />
+              <Field label="Fee Paid at Admission (₹)" name="fees_paid" value={form.fees_paid} onChange={handleChange} type="number" min="0" placeholder="Amount received during admission" />
               <Field label="Admission Date" name="admission_date" value={form.admission_date} onChange={handleChange} type="date" />
               <div>
                 <label className="form-label">Medium *</label>
