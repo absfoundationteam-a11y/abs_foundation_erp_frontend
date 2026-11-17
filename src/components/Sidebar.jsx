@@ -1,10 +1,12 @@
 import { useEffect, useState, useRef } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
+import { useBranch } from "../context/BranchContext"
 import { getNoticesAPI } from "../api"
 
 export default function Sidebar() {
   const { user, logout, isAdmin, isTeacher, isStaff } = useAuth()
+  const { activeBranchId, switchBranch, branch2Configured } = useBranch()
   const location  = useLocation()
   const navigate  = useNavigate()
   const [collapsed, setCollapsed]           = useState(false)
@@ -84,8 +86,9 @@ export default function Sidebar() {
     { to: "/inquiries",       label: "🔎 Inquiries" },
     { to: "/tasks",           label: "✅ Tasks" },
     { to: "/expenses",        label: "💸 Expenses" },
-    { to: "/audit-log",       label: "🔍 Audit Log" },
-    { to: "/data-export",     label: "📤 Data Export" },
+    { to: "/audit-log",        label: "🔍 Audit Log" },
+    { to: "/data-export",      label: "📤 Data Export" },
+    { to: "/combined-reports", label: "🏢 Combined Reports" },
   ]
 
   const studentLinks = [
@@ -204,6 +207,11 @@ export default function Sidebar() {
         <div className="flex items-center gap-2">
           <img src="/logo.png" alt="ABS" className="w-7 h-7 object-contain bg-white rounded p-0.5" />
           <span className="text-white font-bold text-sm">ABS Foundation</span>
+          {(isAdmin || isStaff) && (
+            <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${activeBranchId === "branch2" ? "bg-purple-600 text-white" : "bg-blue-600 text-white"}`}>
+              {activeBranchId === "branch2" ? "B2" : "B1"}
+            </span>
+          )}
         </div>
         {/* Bell on mobile top bar */}
         <div className="relative" ref={mobileNotifRef}>
@@ -258,6 +266,41 @@ export default function Sidebar() {
             {collapsed ? "→" : "←"}
           </button>
         </div>
+
+        {/* Branch Switcher — admin/staff only */}
+        {(isAdmin || isStaff) && (
+          <div className={`border-b border-slate-700 ${collapsed ? "px-1 py-2" : "px-4 py-2"}`}>
+            {collapsed ? (
+              <div className="flex flex-col gap-1 items-center">
+                <button
+                  onClick={() => switchBranch("branch1")}
+                  title="Branch 1"
+                  className={`w-8 h-6 rounded text-xs font-bold transition ${activeBranchId === "branch1" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white hover:bg-slate-700"}`}
+                >B1</button>
+                <button
+                  onClick={() => switchBranch("branch2")}
+                  title={branch2Configured ? "Branch 2" : "Branch 2 (not configured)"}
+                  disabled={!branch2Configured}
+                  className={`w-8 h-6 rounded text-xs font-bold transition ${activeBranchId === "branch2" ? "bg-purple-600 text-white" : branch2Configured ? "text-slate-400 hover:text-white hover:bg-slate-700" : "text-slate-600 cursor-not-allowed"}`}
+                >B2</button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-slate-500 mr-1 flex-shrink-0">Branch:</span>
+                <button
+                  onClick={() => switchBranch("branch1")}
+                  className={`flex-1 py-1 rounded text-xs font-semibold transition ${activeBranchId === "branch1" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white hover:bg-slate-700"}`}
+                >Branch 1</button>
+                <button
+                  onClick={() => switchBranch("branch2")}
+                  disabled={!branch2Configured}
+                  title={!branch2Configured ? "Set VITE_BRANCH2_API_URL in Vercel to enable" : ""}
+                  className={`flex-1 py-1 rounded text-xs font-semibold transition ${activeBranchId === "branch2" ? "bg-purple-600 text-white" : branch2Configured ? "text-slate-400 hover:text-white hover:bg-slate-700" : "text-slate-600 cursor-not-allowed opacity-50"}`}
+                >Branch 2</button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Mobile sidebar header */}
         <div className="md:hidden flex items-center justify-between px-4 py-4 border-b border-slate-700">
