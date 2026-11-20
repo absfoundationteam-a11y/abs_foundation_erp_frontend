@@ -207,7 +207,7 @@ export default function Sidebar() {
         <div className="flex items-center gap-2">
           <img src="/logo.png" alt="ABS" className="w-7 h-7 object-contain bg-white rounded p-0.5" />
           <span className="text-white font-bold text-sm">ABS Foundation</span>
-          {(isAdmin || isStaff) && (
+          {isAdmin && (
             <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${activeBranchId === "branch2" ? "bg-purple-600 text-white" : "bg-blue-600 text-white"}`}>
               {activeBranchId === "branch2" ? "B2" : "B1"}
             </span>
@@ -267,8 +267,8 @@ export default function Sidebar() {
           </button>
         </div>
 
-        {/* Branch Switcher — admin/staff only */}
-        {(isAdmin || isStaff) && (
+        {/* Branch Switcher — admin only */}
+        {isAdmin && (
           <div className={`border-b border-slate-700 ${collapsed ? "px-1 py-2" : "px-4 py-2"}`}>
             {collapsed ? (
               <div className="flex flex-col gap-1 items-center">
