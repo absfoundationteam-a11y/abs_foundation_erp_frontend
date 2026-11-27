@@ -17,9 +17,9 @@ function generateReceipt(payment, fee, studentName, studentCode, course, parentP
   doc.setFillColor(30, 64, 175)
   doc.rect(0, 0, pageW, 42, "F")
 
-  // Triangle logo (left side)
+  // Triangle logo (left side) — drawn with lines() since triangle() is not in jsPDF v4
   doc.setFillColor(196, 30, 30)
-  doc.triangle(14, 38, 23, 8, 32, 38, "F")
+  doc.lines([[9, -30], [9, 30], [-18, 0]], 14, 38, [1, 1], "F", true)
   doc.setTextColor(255, 255, 255)
   doc.setFontSize(7)
   doc.setFont("helvetica", "bold")
