@@ -804,7 +804,7 @@ export default function Attendance() {
                   <table className="tbl">
                     <thead>
                       <tr>
-                        {isManagerView && <th>Student ID</th>}
+                        {isManagerView && <th>Student</th>}
                         <th>Date</th>
                         {!isManagerView && <th>Subject</th>}
                         <th>Status</th>
@@ -815,7 +815,12 @@ export default function Attendance() {
                         .slice((attPage - 1) * ATT_PAGE_SIZE, attPage * ATT_PAGE_SIZE)
                         .map((a) => (
                           <tr key={a.id}>
-                            {isManagerView && <td className="font-mono text-xs text-slate-400">{a.student_id}</td>}
+                            {isManagerView && (
+                              <td>
+                                <p className="font-medium text-slate-800 text-sm">{selectedStudent?.name || "—"}</p>
+                                <p className="font-mono text-xs text-slate-400 mt-0.5">ID: {a.student_id}</p>
+                              </td>
+                            )}
                             <td className="font-medium">{a.date}</td>
                             {!isManagerView && <td>{a.subject_name || a.subject_id || "—"}</td>}
                             <td>
