@@ -14,35 +14,52 @@ function generateReceipt(payment, fee, studentName, studentCode, course, parentP
   const right = pageW - left
 
   // ── Header bar ───────────────────────────────────────────────
-  doc.setFillColor(30, 64, 175)           // deep blue
-  doc.rect(0, 0, pageW, 38, "F")
-  doc.setTextColor(255, 255, 255)
-  doc.setFontSize(18)
-  doc.setFont("helvetica", "bold")
-  doc.text("PAYMENT RECEIPT", pageW / 2, 16, { align: "center" })
-  doc.setFontSize(9)
-  doc.setFont("helvetica", "normal")
-  doc.text("ABS Foundation", pageW / 2, 26, { align: "center" })
-  doc.setFontSize(8)
-  doc.text("Computer-generated receipt — no signature required", pageW / 2, 33, { align: "center" })
+  doc.setFillColor(30, 64, 175)
+  doc.rect(0, 0, pageW, 42, "F")
 
-  // ── Receipt meta row ─────────────────────────────────────────
-  doc.setTextColor(40, 40, 40)
-  doc.setFontSize(10)
-  let y = 50
+  // Triangle logo (left side)
+  doc.setFillColor(196, 30, 30)
+  doc.triangle(14, 38, 23, 8, 32, 38, "F")
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(7)
   doc.setFont("helvetica", "bold")
-  doc.text(`Receipt No:  RCP-${String(payment.id).padStart(5, "0")}`, left, y)
+  doc.text("ABS", 23, 32, { align: "center" })
+
+  // Institute name (next to logo)
+  doc.setFontSize(16)
+  doc.setFont("helvetica", "bold")
+  doc.text("ABS FOUNDATION", 36, 20)
+  doc.setFontSize(7.5)
   doc.setFont("helvetica", "normal")
+  doc.setTextColor(200, 215, 255)
+  doc.text("PROFESSIONAL EDUCATIONAL INSTITUTE", 36, 28)
+
+  // Receipt title (right side)
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(13)
+  doc.setFont("helvetica", "bold")
+  doc.text("PAYMENT RECEIPT", right, 20, { align: "right" })
+
+  // ── Meta bar (dark blue strip) ────────────────────────────────
+  doc.setFillColor(22, 48, 148)
+  doc.rect(0, 42, pageW, 14, "F")
+  doc.setFontSize(7)
+  doc.setFont("helvetica", "normal")
+  doc.setTextColor(180, 200, 255)
+
   const dateStr = payment.paid_date
     ? new Date(payment.paid_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
     : "—"
-  doc.text(`Date: ${dateStr}`, right, y, { align: "right" })
+  const rcpNo = `Receipt No: RCP-${String(payment.id).padStart(5, "0")}`
+  const payDate = `Payment Date: ${dateStr}`
+
+  doc.text(rcpNo,   left, 50)
+  doc.text(payDate, pageW / 2, 50, { align: "center" })
 
   // ── Divider ───────────────────────────────────────────────────
-  y += 8
+  let y = 66
   doc.setDrawColor(210, 210, 210)
-  doc.line(left, y, right, y)
-  y += 10
+  doc.line(left, y - 4, right, y - 4)
 
   // ── Student Details ───────────────────────────────────────────
   doc.setFillColor(245, 247, 250)
@@ -69,26 +86,6 @@ function generateReceipt(payment, fee, studentName, studentCode, course, parentP
   if (parentPhone)  { row("Parent No. :", parentPhone, y); y += 7 }
 
   y += 6
-
-  // ── Payment Details ───────────────────────────────────────────
-  doc.setFillColor(245, 247, 250)
-  const payBoxH = fee.due_date ? 26 : 19
-  doc.roundedRect(left, y - 4, right - left, payBoxH, 2, 2, "F")
-
-  doc.setFontSize(8)
-  doc.setFont("helvetica", "bold")
-  doc.setTextColor(100, 100, 120)
-  doc.text("PAYMENT DETAILS", left + 4, y + 2)
-  y += 8
-
-  doc.setFontSize(10)
-  doc.setTextColor(30, 30, 30)
-  row("Description :", fee.description || "Fee Payment", y); y += 7
-  if (fee.due_date) {
-    row("Due Date :", new Date(fee.due_date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }), y)
-    y += 7
-  }
-  y += 8
 
   // ── Amount Box ────────────────────────────────────────────────
   const boxH = (payment.note || payment.payment_mode) ? 36 : 28
@@ -148,6 +145,8 @@ function generateReceipt(payment, fee, studentName, studentCode, course, parentP
   doc.setFontSize(8)
   doc.setTextColor(160, 160, 160)
   doc.text("Thank you for your payment. Please retain this receipt for your records.", pageW / 2, y, { align: "center" })
+  y += 6
+  doc.text("For queries: 9981375446  |  8770209272", pageW / 2, y, { align: "center" })
 
   doc.save(`Receipt_RCP${String(payment.id).padStart(5, "0")}.pdf`)
 }
