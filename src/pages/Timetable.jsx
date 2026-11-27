@@ -12,14 +12,14 @@ const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
 const EMPTY_FORM = { day: "Monday", subject: "", teacher: "", time_slot: "" }
 
 // ── Timetable grid shared by all roles ───────────────────────────────────────
-function TimetableGrid({ timetable, isAdmin, onDelete, deleteConfirmId, setDeleteConfirmId }) {
+function TimetableGrid({ timetable, canEdit, onDelete, deleteConfirmId, setDeleteConfirmId }) {
   const grouped = DAYS.reduce((acc, day) => {
     acc[day] = timetable.filter((e) => e.day === day)
     return acc
   }, {})
 
   const daysWithClasses = DAYS.filter((d) => grouped[d].length > 0)
-  const daysToShow = isAdmin ? DAYS : daysWithClasses
+  const daysToShow = canEdit ? DAYS : daysWithClasses
 
   if (daysWithClasses.length === 0) {
     return (
@@ -51,7 +51,7 @@ function TimetableGrid({ timetable, isAdmin, onDelete, deleteConfirmId, setDelet
                     <p className="text-sm text-slate-500 mt-0.5">👨‍🏫 {entry.teacher}</p>
                     <p className="text-sm text-primary-600 mt-0.5">🕐 {entry.time_slot}</p>
                   </div>
-                  {isAdmin && (
+                  {canEdit && (
                     deleteConfirmId === entry.id ? (
                       <div className="flex gap-1 items-center ml-2 flex-shrink-0">
                         <span className="text-xs text-red-600 font-medium">Delete?</span>
@@ -223,7 +223,7 @@ function TeacherTimetable() {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function Timetable() {
-  const { user, isAdmin, isStudent, isTeacher } = useAuth()
+  const { user, isAdmin, isStaff, isStudent, isTeacher } = useAuth()
 
   const [courses, setCourses]                   = useState([])
   const [selectedCourseId, setSelectedCourseId] = useState("")
@@ -363,7 +363,7 @@ export default function Timetable() {
             <LoadingState message="Loading timetable..." />
           ) : studentCourse ? (
             <TimetableGrid
-              timetable={timetable} isAdmin={false}
+              timetable={timetable} canEdit={false}
               onDelete={null} deleteConfirmId={null} setDeleteConfirmId={() => {}}
             />
           ) : null}
@@ -396,8 +396,8 @@ export default function Timetable() {
           )}
         </div>
 
-        {/* Admin: Add Entry Form */}
-        {isAdmin && selectedCourseId && (
+        {/* Admin/Staff: Add Entry Form */}
+        {(isAdmin || isStaff) && selectedCourseId && (
           <div className="card p-5 mb-6 border-l-4 border-primary-400">
             <h3 className="text-sm font-semibold text-slate-700 mb-4">
               Add Entry — <span className="text-primary-600">{selectedCourseName}</span>
@@ -468,8 +468,8 @@ export default function Timetable() {
           </div>
         )}
 
-        {!isAdmin && error && <div className="mb-4"><Alert type="error" message={error} /></div>}
-        {!isAdmin && success && <div className="mb-4"><Alert type="success" message={success} /></div>}
+        {!(isAdmin || isStaff) && error && <div className="mb-4"><Alert type="error" message={error} /></div>}
+        {!(isAdmin || isStaff) && success && <div className="mb-4"><Alert type="success" message={success} /></div>}
 
         {/* Prompt to select course */}
         {!selectedCourseId && !courseLoading && (
@@ -492,7 +492,7 @@ export default function Timetable() {
                 <span className="text-xs text-slate-400">{timetable.length} entr{timetable.length !== 1 ? "ies" : "y"}</span>
               </div>
               <TimetableGrid
-                timetable={timetable} isAdmin={isAdmin}
+                timetable={timetable} canEdit={isAdmin || isStaff}
                 onDelete={handleDelete}
                 deleteConfirmId={deleteConfirmId}
                 setDeleteConfirmId={setDeleteConfirmId}
