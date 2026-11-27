@@ -556,6 +556,17 @@ function AdminFees() {
   const [applyCourse, setApplyCourse] = useState("")
   const [applySubmitting, setApplySubmitting] = useState(false)
 
+  // Collect Fee tab
+  const [collectStudent, setCollectStudent]   = useState(null)
+  const [collectFees, setCollectFees]         = useState([])
+  const [collectSummary, setCollectSummary]   = useState(null)
+  const [collectLoading, setCollectLoading]   = useState(false)
+  const [collectPayForms, setCollectPayForms] = useState({})
+  const [collectPayingId, setCollectPayingId] = useState(null)
+  const [collectError, setCollectError]       = useState("")
+  const [collectSuccess, setCollectSuccess]   = useState("")
+  const [collectLastPay, setCollectLastPay]   = useState(null) // { payment, fee } after success
+
   useEffect(() => {
     if (success) { const t = setTimeout(() => setSuccess(""), 4000); return () => clearTimeout(t) }
   }, [success])
@@ -713,6 +724,72 @@ function AdminFees() {
     } finally { setPayingId(null) }
   }
 
+  // ── Collect Fee helpers ───────────────────────────────────────
+  function speakFeeReceipt(studentName, amount, mode, pending) {
+    if (!window.speechSynthesis) return
+    window.speechSynthesis.cancel()
+    const text = `Fee payment received. Student: ${studentName}. Amount: Rupees ${Math.round(amount).toLocaleString("en-IN")}. Mode: ${mode}. Pending balance: Rupees ${Math.round(Math.max(0, pending)).toLocaleString("en-IN")}.`
+    const msg = new SpeechSynthesisUtterance(text)
+    msg.lang = "en-IN"
+    msg.rate = 0.88
+    window.speechSynthesis.speak(msg)
+  }
+
+  async function fetchCollectFees(studentId) {
+    setCollectLoading(true); setCollectError("")
+    try {
+      const [feesRes, summaryRes] = await Promise.all([
+        getFeesAPI(studentId),
+        feesSummaryAPI(studentId),
+      ])
+      setCollectFees(feesRes.data.fees || [])
+      setCollectSummary(summaryRes.data)
+    } catch { setCollectError("Failed to load fees.") }
+    finally { setCollectLoading(false) }
+  }
+
+  function handleSelectCollectStudent(student) {
+    setCollectStudent(student)
+    setCollectFees([]); setCollectSummary(null)
+    setCollectPayForms({}); setCollectLastPay(null)
+    setCollectError(""); setCollectSuccess("")
+    fetchCollectFees(student.id)
+  }
+
+  function getCollectPayForm(feeId) {
+    return collectPayForms[feeId] || { amount: "", paid_date: today(), payment_mode: "Cash" }
+  }
+  function setCollectPayForm(feeId, patch) {
+    setCollectPayForms(prev => ({ ...prev, [feeId]: { ...getCollectPayForm(feeId), ...patch } }))
+  }
+
+  async function handleCollectPay(fee) {
+    const pf = getCollectPayForm(fee.id)
+    const payAmount = parseFloat(pf.amount)
+    if (!payAmount || payAmount <= 0) { setCollectError("Enter a valid amount"); return }
+    setCollectError(""); setCollectSuccess(""); setCollectPayingId(fee.id)
+    try {
+      const res = await payFeesAPI(fee.id, {
+        pay_amount: payAmount,
+        paid_date: pf.paid_date || today(),
+        payment_mode: pf.payment_mode || "Cash",
+      })
+      const payment = res.data?.payment || res.data || { id: Date.now(), amount: payAmount, paid_date: pf.paid_date || today(), payment_mode: pf.payment_mode }
+      setCollectLastPay({ payment, fee })
+      setCollectPayForms(prev => ({ ...prev, [fee.id]: { amount: "", paid_date: today(), payment_mode: "Cash" } }))
+      setCollectSuccess(`✅ ₹${payAmount.toLocaleString("en-IN")} received from ${collectStudent?.name}!`)
+      await fetchCollectFees(collectStudent.id)
+      // also refresh view section if same student open
+      if (viewStudent?.id === collectStudent?.id) fetchFees(viewStudent.id)
+      // voice announcement
+      const newSummary = await feesSummaryAPI(collectStudent.id).then(r => r.data).catch(() => null)
+      const pending = newSummary ? newSummary.total_pending : Math.max(0, fee.amount - fee.paid - payAmount)
+      speakFeeReceipt(collectStudent.name, payAmount, pf.payment_mode || "Cash", pending)
+    } catch (err) {
+      setCollectError(err.response?.data?.detail || "Payment failed")
+    } finally { setCollectPayingId(null) }
+  }
+
   async function handleBulkFee(e) {
     e.preventDefault(); setBulkError(""); setBulkSuccess("")
     if (!bulkForm.course_name) { setBulkError("Select a course"); return }
@@ -799,6 +876,130 @@ function AdminFees() {
   return (
     <div className="space-y-5">
       <h2 className="text-xl font-bold text-slate-800">Fees</h2>
+
+      {/* ── Collect Fee ─────────────────────────────────────── */}
+      <div className="card overflow-hidden border-l-4 border-green-500">
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
+          <span className="text-lg">💰</span>
+          <h3 className="text-base font-semibold text-gray-800">Collect Fee</h3>
+          <span className="ml-auto text-xs text-slate-400">Search student → see balance → receive payment</span>
+        </div>
+        <div className="px-6 py-5 space-y-5">
+
+          {/* Student Search */}
+          <StudentSearchBox
+            label="Search student by name, phone or ID"
+            selectedStudent={collectStudent}
+            onSelect={handleSelectCollectStudent}
+            onClear={() => { setCollectStudent(null); setCollectFees([]); setCollectSummary(null); setCollectLastPay(null); setCollectError(""); setCollectSuccess("") }}
+          />
+
+          {collectError && <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2"><p className="text-red-600 text-sm">{collectError}</p></div>}
+          {collectSuccess && <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-2 flex items-center justify-between gap-3">
+            <p className="text-green-700 text-sm font-medium">{collectSuccess}</p>
+            {collectLastPay && (
+              <button
+                onClick={() => generateReceipt(
+                  collectLastPay.payment, collectLastPay.fee,
+                  collectStudent?.name, collectStudent?.student_code,
+                  collectStudent?.course, collectStudent?.parent_phone
+                )}
+                className="shrink-0 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition">
+                🧾 Download Receipt
+              </button>
+            )}
+          </div>}
+
+          {collectLoading && <p className="text-sm text-slate-400">Loading fees…</p>}
+
+          {/* Summary tiles */}
+          {collectSummary && collectStudent && (
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { label: "Total Fee",   val: collectSummary.total_fees,    color: "text-slate-700",  bg: "bg-slate-50",  border: "border-slate-200" },
+                { label: "Received",    val: collectSummary.total_paid,    color: "text-green-700",  bg: "bg-green-50",  border: "border-green-200" },
+                { label: "Pending",     val: collectSummary.total_pending, color: "text-red-600",    bg: "bg-red-50",    border: "border-red-200"   },
+              ].map(({ label, val, color, bg, border }) => (
+                <div key={label} className={`${bg} border ${border} rounded-xl p-4 text-center`}>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">{label}</p>
+                  <p className={`text-xl font-bold ${color} font-variant-numeric`}>{formatCurrency(val ?? 0)}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Pending fees list */}
+          {collectFees.filter(f => f.paid < f.amount).length > 0 && (
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Pending Fee Records</p>
+              {collectFees.filter(f => f.paid < f.amount).map(fee => {
+                const remaining = fee.amount - fee.paid
+                const pf = getCollectPayForm(fee.id)
+                const isPaying = collectPayingId === fee.id
+                return (
+                  <div key={fee.id} className="border border-slate-200 rounded-xl overflow-hidden">
+                    {/* Fee header */}
+                    <div className="flex items-center justify-between px-4 py-3 bg-slate-50">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-800">{fee.description || "Fee"}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          Total ₹{fee.amount.toLocaleString("en-IN")} · Paid ₹{fee.paid.toLocaleString("en-IN")} ·{" "}
+                          <span className="text-red-600 font-medium">Due ₹{remaining.toLocaleString("en-IN")}</span>
+                          {fee.due_date && <span className="ml-2 text-slate-400">· Due {formatDate(fee.due_date)}</span>}
+                        </p>
+                      </div>
+                      {isOverdue(fee.due_date) && fee.paid < fee.amount && (
+                        <span className="text-xs font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full">OVERDUE</span>
+                      )}
+                    </div>
+                    {/* Inline pay form */}
+                    <div className="px-4 py-3 flex flex-wrap gap-2 items-end bg-white">
+                      <div>
+                        <label className="form-label">Amount (₹)</label>
+                        <input
+                          type="number" min="1" max={remaining} placeholder={`Max ${remaining.toLocaleString("en-IN")}`}
+                          value={pf.amount}
+                          onChange={e => setCollectPayForm(fee.id, { amount: e.target.value })}
+                          className="inp w-36"
+                        />
+                      </div>
+                      <div>
+                        <label className="form-label">Mode</label>
+                        <select value={pf.payment_mode} onChange={e => setCollectPayForm(fee.id, { payment_mode: e.target.value })} className="inp w-32">
+                          {["Cash","UPI","Bank Transfer","Cheque","Other"].map(m => <option key={m}>{m}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="form-label">Date</label>
+                        <input type="date" value={pf.paid_date} onChange={e => setCollectPayForm(fee.id, { paid_date: e.target.value })} className="inp w-36" />
+                      </div>
+                      <button
+                        onClick={() => handleCollectPay(fee)}
+                        disabled={isPaying || !pf.amount}
+                        className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg text-sm font-semibold transition disabled:opacity-50 flex items-center gap-1.5">
+                        {isPaying ? "Processing…" : "✓ Receive"}
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* All paid */}
+          {collectStudent && !collectLoading && collectFees.length > 0 && collectFees.every(f => f.paid >= f.amount) && (
+            <div className="text-center py-4">
+              <p className="text-green-700 font-semibold text-sm">✅ All fees cleared for {collectStudent.name}</p>
+            </div>
+          )}
+
+          {/* No fees */}
+          {collectStudent && !collectLoading && collectFees.length === 0 && !collectError && (
+            <p className="text-sm text-slate-400">No fee records found for this student.</p>
+          )}
+
+        </div>
+      </div>
 
       {/* ── Add Fees Record ─────────────────────────────────── */}
       <div className="card p-6">
