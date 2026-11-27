@@ -783,7 +783,7 @@ function AdminFees() {
       if (viewStudent?.id === collectStudent?.id) fetchFees(viewStudent.id)
       // voice announcement
       const newSummary = await feesSummaryAPI(collectStudent.id).then(r => r.data).catch(() => null)
-      const pending = newSummary ? newSummary.total_pending : Math.max(0, fee.amount - fee.paid - payAmount)
+      const pending = newSummary ? newSummary.pending : Math.max(0, fee.amount - fee.paid - payAmount)
       speakFeeReceipt(collectStudent.name, payAmount, pf.payment_mode || "Cash", pending)
     } catch (err) {
       setCollectError(err.response?.data?.detail || "Payment failed")
@@ -878,7 +878,7 @@ function AdminFees() {
       <h2 className="text-xl font-bold text-slate-800">Fees</h2>
 
       {/* ── Collect Fee ─────────────────────────────────────── */}
-      <div className="card overflow-hidden border-l-4 border-green-500">
+      <div className="card border-l-4 border-green-500">
         <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
           <span className="text-lg">💰</span>
           <h3 className="text-base font-semibold text-gray-800">Collect Fee</h3>
@@ -916,9 +916,9 @@ function AdminFees() {
           {collectSummary && collectStudent && (
             <div className="grid grid-cols-3 gap-3">
               {[
-                { label: "Total Fee",   val: collectSummary.total_fees,    color: "text-slate-700",  bg: "bg-slate-50",  border: "border-slate-200" },
-                { label: "Received",    val: collectSummary.total_paid,    color: "text-green-700",  bg: "bg-green-50",  border: "border-green-200" },
-                { label: "Pending",     val: collectSummary.total_pending, color: "text-red-600",    bg: "bg-red-50",    border: "border-red-200"   },
+                { label: "Total Fee",   val: collectSummary.total_fees, color: "text-slate-700",  bg: "bg-slate-50",  border: "border-slate-200" },
+                { label: "Received",    val: collectSummary.paid,       color: "text-green-700",  bg: "bg-green-50",  border: "border-green-200" },
+                { label: "Pending",     val: collectSummary.pending,    color: "text-red-600",    bg: "bg-red-50",    border: "border-red-200"   },
               ].map(({ label, val, color, bg, border }) => (
                 <div key={label} className={`${bg} border ${border} rounded-xl p-4 text-center`}>
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">{label}</p>
