@@ -774,8 +774,19 @@ function AdminFees() {
         paid_date: pf.paid_date || today(),
         payment_mode: pf.payment_mode || "Cash",
       })
-      const payment = res.data?.payment || res.data || { id: Date.now(), amount: payAmount, paid_date: pf.paid_date || today(), payment_mode: pf.payment_mode }
-      setCollectLastPay({ payment, fee })
+      // Build payment object with known-correct fields (API response field names vary)
+      const payId = res.data?.payment?.id ?? res.data?.id ?? res.data?.pay_id ?? Date.now()
+      const paidDate = pf.paid_date || today()
+      const payment = {
+        id: payId,
+        amount: payAmount,
+        paid_date: paidDate,
+        payment_mode: pf.payment_mode || "Cash",
+        note: res.data?.payment?.note || res.data?.note || null,
+      }
+      // Use post-payment fee values so receipt summary is correct
+      const updatedFee = { ...fee, paid: fee.paid + payAmount }
+      setCollectLastPay({ payment, fee: updatedFee })
       setCollectPayForms(prev => ({ ...prev, [fee.id]: { amount: "", paid_date: today(), payment_mode: "Cash" } }))
       setCollectSuccess(`✅ ₹${payAmount.toLocaleString("en-IN")} received from ${collectStudent?.name}!`)
       await fetchCollectFees(collectStudent.id)
